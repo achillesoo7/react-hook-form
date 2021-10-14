@@ -1,1 +1,1 @@
-export default (value: string) => value.trim() === '';
+export default (value: string) => value === '';
