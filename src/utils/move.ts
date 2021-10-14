@@ -1,4 +1,17 @@
-import isArray from './isArray';
+import isUndefined from './isUndefined';
 
-export default <T>(data: T[], from: number, to: number): T[] =>
-  isArray(data) ? data.splice(to, 0, data.splice(from, 1)[0]) : [];
+export default <T>(
+  data: (T | undefined)[],
+  from: number,
+  to: number,
+): (T | undefined)[] => {
+  if (Array.isArray(data)) {
+    if (isUndefined(data[to])) {
+      data[to] = undefined;
+    }
+    data.splice(to, 0, data.splice(from, 1)[0]);
+    return data;
+  }
+
+  return [];
+};

@@ -1,23 +1,22 @@
-import { FieldError, FieldName, ValidateResult } from '../types';
+import {
+  InternalFieldErrors,
+  InternalFieldName,
+  ValidateResult,
+} from '../types';
 
-export default <FormValues>(
-  name: FieldName<FormValues>,
+export default (
+  name: InternalFieldName,
   validateAllFieldCriteria: boolean,
-  errors: Record<FieldName<FormValues>, FieldError>,
+  errors: InternalFieldErrors,
   type: string,
   message: ValidateResult,
-) => {
-  if (validateAllFieldCriteria) {
-    const error = errors[name];
-
-    return {
-      ...error,
-      types: {
-        ...(error && error.types ? error.types : {}),
-        [type]: message || true,
-      },
-    };
-  }
-
-  return {};
-};
+) =>
+  validateAllFieldCriteria
+    ? {
+        ...errors[name],
+        types: {
+          ...(errors[name] && errors[name]!.types ? errors[name]!.types : {}),
+          [type]: message || true,
+        },
+      }
+    : {};

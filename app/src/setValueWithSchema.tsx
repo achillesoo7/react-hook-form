@@ -1,23 +1,26 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
 
 let renderCounter = 0;
 
-const validationSchema = yup.object().shape({
-  lastName: yup
-    .string()
-    .min(10)
-    .required(),
-  firstName: yup
-    .string()
-    .min(10)
-    .required(),
-  requiredField: yup.string().required(),
-});
+const validationSchema = yup
+  .object()
+  .shape({
+    lastName: yup.string().min(10).required(),
+    firstName: yup.string().min(10).required(),
+    requiredField: yup.string().required(),
+  })
+  .required();
 
 const SetValueWithSchema: React.FC = () => {
-  const { register, setValue, handleSubmit, errors } = useForm<{
+  const {
+    register,
+    setValue,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<{
     firstName: string;
     lastName: string;
     age: string;
@@ -25,25 +28,32 @@ const SetValueWithSchema: React.FC = () => {
     radio: string;
     select: string;
     multiple: string[];
-    requiredField: string,
+    requiredField: string;
   }>({
-    validationSchema,
+    resolver: yupResolver(validationSchema),
   });
 
   renderCounter++;
 
   useEffect(() => {
-    register({ name: 'firstName' }, { required: true });
-    register({ name: 'lastName' }, { required: true });
+    register('firstName', { required: true });
+    register('lastName', { required: true });
   }, [register]);
 
   return (
-    <form onSubmit={handleSubmit(() => {})}>
+    <form
+      onSubmit={handleSubmit((d) => {
+        console.log(d);
+      })}
+    >
       <input
         name="firstName"
         placeholder="firstName"
-        onChange={e => {
-          setValue('firstName', e.target.value, true);
+        onChange={(e) => {
+          setValue('firstName', e.target.value, {
+            shouldValidate: true,
+            shouldDirty: true,
+          });
         }}
       />
       {errors.firstName && <p>firstName error</p>}
@@ -51,28 +61,36 @@ const SetValueWithSchema: React.FC = () => {
       <input
         name="lastName"
         placeholder="lastName"
-        onChange={e => {
-          setValue('lastName', e.target.value, true);
+        onChange={(e) => {
+          setValue('lastName', e.target.value, {
+            shouldValidate: true,
+            shouldDirty: true,
+          });
         }}
       />
       {errors.lastName && <p>lastName error</p>}
 
       <input
-        name="age"
-        ref={register}
-        onChange={e => {
-          setValue('age', e.target.value, true);
+        {...register('age')}
+        onChange={(e) => {
+          setValue('age', e.target.value, {
+            shouldValidate: true,
+            shouldDirty: true,
+          });
         }}
       />
 
-      <input name="requiredField" placeholder="requiredField" ref={register} />
+      <input placeholder="requiredField" {...register('requiredField')} />
       {errors.requiredField && <p>RequiredField error</p>}
 
       <button
         type="button"
         id="setValue"
         onClick={() => {
-          setValue('requiredField', 'test123456789', true);
+          setValue('requiredField', 'test123456789', {
+            shouldValidate: true,
+            shouldDirty: true,
+          });
         }}
       >
         firstName reset

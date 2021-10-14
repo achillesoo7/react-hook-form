@@ -1,12 +1,12 @@
 <div align="center">
     <p align="center">
         <a href="https://react-hook-form.com" title="React Hook Form - Simple React forms validation">
-            <img src="https://raw.githubusercontent.com/bluebill1049/react-hook-form/master/website/logo.png" alt="React Hook Form Logo - React hook custom hook for form validation" width="300px" />
+            <img src="https://raw.githubusercontent.com/bluebill1049/react-hook-form/master/docs/logo.png" alt="React Hook Form Logo - React hook custom hook for form validation" width="300px" />
         </a>
     </p>
 </div>
 
-<p align="center">Быстрые, гибкие и расширяемые формы с простой в использовании проверкой.</p>
+<p align="center">Производительные, гибкие с возможностью расширения и простой в использовании валидацией формы.</p>
 
 <div align="center">
 
@@ -22,24 +22,24 @@
 <div align="center">
     <p align="center">
         <a href="https://react-hook-form.com" title="React Hook Form - Simple React forms validation">
-            <img src="https://raw.githubusercontent.com/bluebill1049/react-hook-form/master/website/example.gif" alt="React Hook Form video - React custom hook for form validation" width="100%" />
+            <img src="https://raw.githubusercontent.com/bluebill1049/react-hook-form/master/docs/example.gif" alt="React Hook Form video - React custom hook for form validation" width="100%" />
         </a>
     </p>
 </div>
 
-<a href="https://github.com/react-hook-form/react-hook-form">🇦🇺English</a> | <a href="./docs/README.zh-CN.md">🇨🇳 简体中文</a> | <a href="./docs/README.ja-JP.md">🇯🇵 日本語</a> | <a href="./docs/README.ko-KR.md">🇰🇷한국어</a> | <a href="./docs/README.fr-FR.md">🇫🇷Français</a> | <a href="./docs/README.it-IT.md">🇮🇹Italiano</a> | <a href="./docs/README.pt-BR.md">🇧🇷Português</a> | <a href="./docs/README.es-ES.md">🇪🇸Español</a> | 🇷🇺Русский
+<a href="./README.V6.md">English</a> | <a href="./README.zh-TW.md">繁中</a> | <a href="./README.zh-CN.md">简中</a> | <a href="./README.ja-JP.md">日本語</a> | <a href="./README.ko-KR.md">한국어</a> | <a href="./README.fr-FR.md">Français</a> | <a href="./README.it-IT.md">Italiano</a> | <a href="./README.pt-BR.md">Português</a> | <a href="./README.es-ES.md">Español</a> | Русский | <a href="./README.de-DE.md">Deutsch</a> | <a href="./README.tr-TR.md">Türkçe</a>
 
-## Характеристики
+## Особенности
 
-- Создан с учетом производительности и DX
+- Нацелены на производительность и DX
 - Применение неконтролируемой проверки форм
-- Улучшить производительность контролируемой формы
-- [Крошечный размер](https://bundlephobia.com/result?p=react-hook-form@latest) без какой-либо зависимости
-- Соответствует стандартам HTML для валидации
-- Совместим с React Native
-- Поддерживает [Yup](https://github.com/jquense/yup), [Joi](https://github.com/hapijs/joi), [Superstruct](https://github.com/ianstormtaylor/superstruct) или обычай
+- Улучшение производительности контролируемых форм
+- [Крошечный размер](https://bundlephobia.com/result?p=react-hook-form@latest) без каких-либо зависимостей
+- Следование стандартам HTML для валидации
+- Совместимость с React Native
+- Поддержка [Yup](https://github.com/jquense/yup), [Joi](https://github.com/hapijs/joi), [Superstruct](https://github.com/ianstormtaylor/superstruct) и своих реализаций валидации
 - Поддержка нативной браузерной валидации
-- Быстро создавать формы с [конструктором форм](https://react-hook-form.com/form-builder)
+- Возможность быстро создавать формы с [конструктором форм](https://react-hook-form.com/form-builder)
 
 ## Установка
 
@@ -63,38 +63,35 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 
 function App() {
-  const { register, handleSubmit, errors } = useForm(); // инициализация хуков
-  const onSubmit = data => {
+  const { register, handleSubmit, errors } = useForm(); // инициализация хука
+  const onSubmit = (data) => {
     console.log(data);
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <input name="firstname" ref={register} /> {/* зарегистрировать вход */}
-
+      <input name="firstname" ref={register} /> {/* регистрация поля ввода */}
       <input name="lastname" ref={register({ required: true })} />
       {errors.lastname && 'Фамилия обязательна.'}
-
       <input name="age" ref={register({ pattern: /\d+/ })} />
       {errors.age && 'Пожалуйста, введите ваш возраст.'}
-
       <input type="submit" />
     </form>
   );
 }
 ```
 
-## Покровители
+## Спонсоры
 
-Спасибо всем нашим покровителям! [[Стать покровителем](https://opencollective.com/react-hook-form#backer)].
+Спасибо всем кто поддерживает нас! [[Стать спонсором](https://opencollective.com/react-hook-form#backer)].
 
 <a href="https://opencollective.com/react-hook-form#backers">
     <img src="https://opencollective.com/react-hook-form/backers.svg?width=950" />
 </a>
 
-## организации
+## Организации
 
-Спасибо этим замечательным организациям! [[Способствовать](https://opencollective.com/react-hook-form/contribute)]
+Спасибо этим замечательным организациям! [[Спонсировать](https://opencollective.com/react-hook-form/contribute)]
 
 <a href="https://github.com/react-hook-form/react-hook-form/graphs/contributors">
     <img src="https://opencollective.com/react-hook-form/organizations.svg?width=950" />
@@ -102,7 +99,7 @@ function App() {
 
 ## Участники
 
-Спасибо этим замечательным людям! [[Стать участником](CONTRIBUTING.md)].
+Спасибо этим замечательным людям! [[Стать участником](../CONTRIBUTING.md)].
 
 <a href="https://github.com/react-hook-form/react-hook-form/graphs/contributors">
     <img src="https://opencollective.com/react-hook-form/contributors.svg?width=950" />

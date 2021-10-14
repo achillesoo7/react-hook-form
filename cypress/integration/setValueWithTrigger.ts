@@ -1,4 +1,4 @@
-context('form setValue with trigger', () => {
+describe('form setValue with trigger', () => {
   it('should set input value and trigger validation', () => {
     cy.visit('http://localhost:3000/setValueWithTrigger');
 
@@ -16,6 +16,6 @@ context('form setValue with trigger', () => {
     cy.get('input[name="lastName"]').type('bill');
 
     cy.get('p').should('have.length', 0);
-    cy.get('#renderCount').contains('9');
+    cy.get('#renderCount').contains('30');
   });
 });

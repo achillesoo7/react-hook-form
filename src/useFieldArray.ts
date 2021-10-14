@@ -1,469 +1,314 @@
 import * as React from 'react';
-import { useFormContext } from './useFormContext';
-import { isMatchFieldArrayName } from './logic/isNameInFieldArray';
-import getFieldValueByName from './logic/getFieldArrayValueByName';
-import { appendId, mapIds } from './logic/mapIds';
-import getIsFieldsDifferent from './logic/getIsFieldsDifferent';
-import getFieldArrayParentName from './logic/getFieldArrayParentName';
-import getSortRemovedItems from './logic/getSortedArrayFieldIndexes';
-import get from './utils/get';
-import isUndefined from './utils/isUndefined';
-import removeArrayAt from './utils/remove';
-import moveArrayAt from './utils/move';
-import swapArrayAt from './utils/swap';
-import prependAt from './utils/prepend';
-import isArray from './utils/isArray';
-import insertAt from './utils/insert';
-import isKey from './utils/isKey';
+
+import focusFieldBy from './logic/focusFieldBy';
+import getFocusFieldName from './logic/getFocusFieldName';
+import mapCurrentIds from './logic/mapCurrentIds';
+import mapIds from './logic/mapId';
+import appendAt from './utils/append';
+import convertToArrayPayload from './utils/convertToArrayPayload';
 import fillEmptyArray from './utils/fillEmptyArray';
-import { REGEX_ARRAY_FIELD_INDEX } from './constants';
+import get from './utils/get';
+import insertAt from './utils/insert';
+import moveArrayAt from './utils/move';
+import omitKeys from './utils/omitKeys';
+import prependAt from './utils/prepend';
+import removeArrayAt from './utils/remove';
+import set from './utils/set';
+import swapArrayAt from './utils/swap';
+import updateAt from './utils/update';
 import {
-  Field,
+  FieldArray,
+  FieldArrayMethodProps,
+  FieldArrayPath,
+  FieldArrayWithId,
+  FieldPath,
   FieldValues,
   UseFieldArrayProps,
-  Control,
-  ArrayField,
+  UseFieldArrayReturn,
 } from './types';
+import { useFormContext } from './useFormContext';
+import { useSubscribe } from './useSubscribe';
 
 export const useFieldArray = <
-  FormArrayValues extends FieldValues = FieldValues,
-  KeyName extends string = 'id',
-  ControlProp extends Control = Control
->({
-  control,
-  name,
-  keyName = 'id' as KeyName,
-}: UseFieldArrayProps<KeyName, ControlProp>) => {
+  TFieldValues extends FieldValues = FieldValues,
+  TFieldArrayName extends FieldArrayPath<TFieldValues> = FieldArrayPath<TFieldValues>,
+  TKeyName extends string = 'id',
+>(
+  props: UseFieldArrayProps<TFieldValues, TFieldArrayName, TKeyName>,
+): UseFieldArrayReturn<TFieldValues, TFieldArrayName, TKeyName> => {
   const methods = useFormContext();
   const {
-    isWatchAllRef,
-    resetFieldArrayFunctionRef,
-    fieldArrayNamesRef,
-    reRender,
-    fieldsRef,
-    getValues,
-    defaultValuesRef,
-    removeFieldEventListener,
-    errorsRef,
-    dirtyFieldsRef,
-    isDirtyRef,
-    touchedFieldsRef,
-    readFormStateRef,
-    watchFieldsRef,
-    validFieldsRef,
-    fieldsWithValidationRef,
-    fieldArrayDefaultValues,
-    validateSchemaIsValid,
-  } = control || methods.control;
-  const getDefaultValues = () => [
-    ...get(
-      fieldArrayDefaultValues.current[getFieldArrayParentName(name)]
-        ? fieldArrayDefaultValues.current
-        : defaultValuesRef.current,
-      name,
-      [],
-    ),
-  ];
-  const memoizedDefaultValues = React.useRef<Partial<FormArrayValues>[]>(
-    getDefaultValues(),
+    control = methods.control,
+    name,
+    keyName = 'id' as TKeyName,
+    shouldUnregister,
+  } = props;
+  const [fields, setFields] = React.useState<
+    Partial<FieldArrayWithId<TFieldValues, TFieldArrayName, TKeyName>>[]
+  >(mapIds(control._getFieldArray(name), keyName));
+  const _fieldIds = React.useRef(fields);
+  const _name = React.useRef(name);
+
+  _name.current = name;
+  _fieldIds.current = fields;
+  control._names.array.add(name);
+
+  useSubscribe({
+    callback: ({ values, name: fieldArrayName }) => {
+      if (fieldArrayName === _name.current || !fieldArrayName) {
+        setFields(mapIds(get(values, _name.current), keyName));
+      }
+    },
+    subject: control._subjects.array,
+    skipEarlySubscription: true,
+  });
+
+  const updateValues = React.useCallback(
+    <
+      T extends Partial<
+        FieldArrayWithId<TFieldValues, TFieldArrayName, TKeyName>
+      >[],
+    >(
+      updatedFieldArrayValuesWithKey: T,
+    ) => {
+      const updatedFieldArrayValues = omitKeys(
+        updatedFieldArrayValuesWithKey,
+        keyName,
+      );
+      set(control._formValues, name, updatedFieldArrayValues);
+      setFields(updatedFieldArrayValuesWithKey);
+      return updatedFieldArrayValues;
+    },
+    [control, name, keyName],
   );
-  const [fields, setField] = React.useState<
-    Partial<ArrayField<FormArrayValues, KeyName>>[]
-  >(mapIds(memoizedDefaultValues.current, keyName));
-  const [isDeleted, setIsDeleted] = React.useState(false);
-  const allFields = React.useRef<
-    Partial<ArrayField<FormArrayValues, KeyName>>[]
-  >(fields);
-  const isNameKey = isKey(name);
-
-  allFields.current = fields;
-
-  if (isNameKey) {
-    fieldArrayDefaultValues.current[name] = memoizedDefaultValues.current;
-  }
-
-  const appendValueWithKey = (values: Partial<FormArrayValues>[]) =>
-    values.map((value: Partial<FormArrayValues>) => appendId(value, keyName));
-
-  const setFieldAndValidState = (
-    fieldsValues: Partial<ArrayField<FormArrayValues, KeyName>>[],
-  ) => {
-    setField(fieldsValues);
-
-    if (readFormStateRef.current.isValid && validateSchemaIsValid) {
-      validateSchemaIsValid({
-        [name]: fieldsValues,
-      });
-    }
-  };
-
-  const modifyDirtyFields = ({
-    shouldRender,
-    isRemove,
-    isPrePend,
-    index,
-    value = {},
-  }: {
-    isPrePend?: boolean;
-    shouldRender?: boolean;
-    isRemove?: boolean;
-    index?: number | number[];
-    value?: Partial<FormArrayValues> | Partial<FormArrayValues>[];
-  } = {}) => {
-    let render = shouldRender;
-    const values = isArray(value) ? value : [value];
-
-    if (readFormStateRef.current.dirty) {
-      const dirtyFieldIndexesAndValues: Record<number, string[]> = {};
-
-      if (isPrePend || isRemove) {
-        for (const dirtyField of [...dirtyFieldsRef.current].sort()) {
-          if (isMatchFieldArrayName(dirtyField, name)) {
-            const matchedIndexes = dirtyField.match(REGEX_ARRAY_FIELD_INDEX);
-
-            if (matchedIndexes) {
-              const matchIndex = +matchedIndexes[matchedIndexes.length - 1];
-
-              if (dirtyFieldIndexesAndValues[matchIndex]) {
-                dirtyFieldIndexesAndValues[matchIndex].push(dirtyField);
-              } else {
-                dirtyFieldIndexesAndValues[matchIndex] = [dirtyField];
-              }
-            }
-
-            dirtyFieldsRef.current.delete(dirtyField);
-          }
-        }
-      }
-
-      if (!isUndefined(index) || isPrePend) {
-        const updatedDirtyFieldIndexes = isUndefined(index)
-          ? []
-          : getSortRemovedItems(
-              Object.keys(dirtyFieldIndexesAndValues).map((i) => +i),
-              isArray(index) ? index : [index],
-            );
-
-        Object.values(dirtyFieldIndexesAndValues).forEach((values, index) => {
-          const updateIndex = isPrePend ? 0 : updatedDirtyFieldIndexes[index];
-
-          if (updateIndex > -1) {
-            for (const value of values) {
-              const matchedIndexes = value.match(REGEX_ARRAY_FIELD_INDEX);
-
-              if (matchedIndexes) {
-                dirtyFieldsRef.current.add(
-                  value.replace(
-                    /[\d+]([^[\d+]+)$/,
-                    `${
-                      isPrePend
-                        ? +matchedIndexes[matchedIndexes.length - 1] +
-                          values.length
-                        : updateIndex
-                    }$1`,
-                  ),
-                );
-              }
-            }
-          }
-        });
-      }
-
-      if (!isRemove) {
-        values.forEach((fieldValue, index) =>
-          Object.keys(fieldValue).forEach((key) =>
-            dirtyFieldsRef.current.add(
-              `${name}[${
-                isPrePend ? index : allFields.current.length + index
-              }].${key}`,
-            ),
-          ),
-        );
-
-        isDirtyRef.current = true;
-      }
-
-      render = true;
-    }
-
-    if (render && !isWatchAllRef.current) {
-      reRender();
-    }
-  };
-
-  const resetFields = (flagOrFields?: (Partial<FormArrayValues> | null)[]) => {
-    if (readFormStateRef.current.dirty) {
-      isDirtyRef.current = isUndefined(flagOrFields)
-        ? true
-        : getIsFieldsDifferent(
-            flagOrFields,
-            defaultValuesRef.current[name] || [],
-          );
-    }
-
-    for (const key in fieldsRef.current) {
-      if (isMatchFieldArrayName(key, name) && fieldsRef.current[key]) {
-        removeFieldEventListener(fieldsRef.current[key] as Field, true);
-      }
-    }
-  };
-
-  const mapCurrentFieldsValueWithState = () => {
-    const currentFieldsValue: Partial<FormArrayValues>[] = get(
-      getValues({ nest: true }),
-      name,
-    );
-
-    if (isArray(currentFieldsValue)) {
-      for (let i = 0; i < currentFieldsValue.length; i++) {
-        allFields.current[i] = {
-          ...allFields.current[i],
-          ...currentFieldsValue[i],
-        };
-      }
-    }
-  };
 
   const append = (
-    value: Partial<FormArrayValues> | Partial<FormArrayValues>[],
+    value:
+      | Partial<FieldArray<TFieldValues, TFieldArrayName>>
+      | Partial<FieldArray<TFieldValues, TFieldArrayName>>[],
+    options?: FieldArrayMethodProps,
   ) => {
-    setFieldAndValidState([
-      ...allFields.current,
-      ...(isArray(value)
-        ? appendValueWithKey(value)
-        : [appendId(value, keyName)]),
-    ]);
-    modifyDirtyFields({ value });
+    const appendValue = convertToArrayPayload(value);
+    const updatedFieldArrayValuesWithKey = appendAt(
+      mapCurrentIds(control._getFieldArray(name), _fieldIds, keyName),
+      mapIds(appendValue, keyName),
+    );
+    control._updateFieldArray(
+      name,
+      appendAt,
+      {
+        argA: fillEmptyArray(value),
+      },
+      updateValues(updatedFieldArrayValuesWithKey),
+    );
+
+    control._names.focus = getFocusFieldName(
+      name,
+      updatedFieldArrayValuesWithKey.length - appendValue.length,
+      options,
+    );
   };
 
   const prepend = (
-    value: Partial<FormArrayValues> | Partial<FormArrayValues>[],
+    value:
+      | Partial<FieldArray<TFieldValues, TFieldArrayName>>
+      | Partial<FieldArray<TFieldValues, TFieldArrayName>>[],
+    options?: FieldArrayMethodProps,
   ) => {
-    let shouldRender = false;
-
-    resetFields();
-    setFieldAndValidState(
-      prependAt(
-        allFields.current,
-        isArray(value) ? appendValueWithKey(value) : [appendId(value, keyName)],
-      ),
+    const updatedFieldArrayValuesWithKey = prependAt(
+      mapCurrentIds(control._getFieldArray(name), _fieldIds, keyName),
+      mapIds(convertToArrayPayload(value), keyName),
+    );
+    control._updateFieldArray(
+      name,
+      prependAt,
+      {
+        argA: fillEmptyArray(value),
+      },
+      updateValues(updatedFieldArrayValuesWithKey),
     );
 
-    if (errorsRef.current[name]) {
-      errorsRef.current[name] = prependAt(
-        errorsRef.current[name],
-        fillEmptyArray(value),
-      );
-    }
-
-    if (readFormStateRef.current.touched && touchedFieldsRef.current[name]) {
-      touchedFieldsRef.current[name] = prependAt(
-        touchedFieldsRef.current[name],
-        fillEmptyArray(value),
-      );
-      shouldRender = true;
-    }
-
-    modifyDirtyFields({
-      shouldRender,
-      isPrePend: true,
-      value,
-    });
+    control._names.focus = getFocusFieldName(name, 0, options);
   };
 
   const remove = (index?: number | number[]) => {
-    let shouldRender = false;
-    const isIndexUndefined = isUndefined(index);
-
-    if (!isIndexUndefined) {
-      mapCurrentFieldsValueWithState();
-    }
-
-    resetFields(
-      removeArrayAt(getFieldValueByName(fieldsRef.current, name), index),
-    );
-    setFieldAndValidState(removeArrayAt(allFields.current, index));
-    setIsDeleted(true);
-
-    if (errorsRef.current[name]) {
-      errorsRef.current[name] = removeArrayAt(errorsRef.current[name], index);
-      if (!errorsRef.current[name].filter(Boolean).length) {
-        delete errorsRef.current[name];
-      }
-    }
-
-    if (readFormStateRef.current.touched && touchedFieldsRef.current[name]) {
-      touchedFieldsRef.current[name] = removeArrayAt(
-        touchedFieldsRef.current[name],
-        index,
-      );
-      shouldRender = true;
-    }
-
-    if (readFormStateRef.current.isValid && !validateSchemaIsValid) {
-      let fieldIndex = -1;
-      let isFound = false;
-      const isIndexUndefined = isUndefined(index);
-
-      while (fieldIndex++ < fields.length) {
-        const isLast = fieldIndex === fields.length - 1;
-        const isCurrentIndex =
-          (isArray(index) ? index : [index]).indexOf(fieldIndex) >= 0;
-
-        if (isCurrentIndex || isIndexUndefined) {
-          isFound = true;
-        }
-
-        if (!isFound) {
-          continue;
-        }
-
-        for (const key in fields[fieldIndex]) {
-          const currentFieldName = `${name}[${fieldIndex}].${key}`;
-
-          if (isCurrentIndex || isLast || isIndexUndefined) {
-            validFieldsRef.current.delete(currentFieldName);
-            fieldsWithValidationRef.current.delete(currentFieldName);
-          } else {
-            const previousFieldName = `${name}[${fieldIndex - 1}].${key}`;
-
-            if (validFieldsRef.current.has(currentFieldName)) {
-              validFieldsRef.current.add(previousFieldName);
-            }
-            if (fieldsWithValidationRef.current.has(currentFieldName)) {
-              fieldsWithValidationRef.current.add(previousFieldName);
-            }
-          }
-        }
-      }
-    }
-
-    modifyDirtyFields({
-      shouldRender,
-      isRemove: true,
+    const updatedFieldArrayValuesWithKey: Partial<
+      FieldArrayWithId<TFieldValues, TFieldArrayName, TKeyName>
+    >[] = removeArrayAt(
+      mapCurrentIds(control._getFieldArray(name), _fieldIds, keyName),
       index,
-    });
+    );
+    control._updateFieldArray(
+      name,
+      removeArrayAt,
+      {
+        argA: index,
+      },
+      updateValues(updatedFieldArrayValuesWithKey),
+    );
   };
 
   const insert = (
     index: number,
-    value: Partial<FormArrayValues> | Partial<FormArrayValues>[],
+    value:
+      | Partial<FieldArray<TFieldValues, TFieldArrayName>>
+      | Partial<FieldArray<TFieldValues, TFieldArrayName>>[],
+    options?: FieldArrayMethodProps,
   ) => {
-    mapCurrentFieldsValueWithState();
-    resetFields(insertAt(getFieldValueByName(fieldsRef.current, name), index));
-    setFieldAndValidState(
-      insertAt(
-        allFields.current,
-        index,
-        isArray(value) ? appendValueWithKey(value) : [appendId(value, keyName)],
-      ),
+    const updatedFieldArrayValuesWithKey = insertAt(
+      mapCurrentIds(control._getFieldArray(name), _fieldIds, keyName),
+      index,
+      mapIds(convertToArrayPayload(value), keyName),
+    );
+    control._updateFieldArray(
+      name,
+      insertAt,
+      {
+        argA: index,
+        argB: fillEmptyArray(value),
+      },
+      updateValues(updatedFieldArrayValuesWithKey),
     );
 
-    if (errorsRef.current[name]) {
-      errorsRef.current[name] = insertAt(
-        errorsRef.current[name],
-        index,
-        fillEmptyArray(value),
-      );
-    }
-
-    if (readFormStateRef.current.touched && touchedFieldsRef.current[name]) {
-      touchedFieldsRef.current[name] = insertAt(
-        touchedFieldsRef.current[name],
-        index,
-        fillEmptyArray(value),
-      );
-      reRender();
-    }
+    control._names.focus = getFocusFieldName(name, index, options);
   };
 
   const swap = (indexA: number, indexB: number) => {
-    mapCurrentFieldsValueWithState();
-    const fieldValues = getFieldValueByName(fieldsRef.current, name);
-    swapArrayAt(fieldValues, indexA, indexB);
-    resetFields(fieldValues);
-    swapArrayAt(allFields.current, indexA, indexB);
-    setFieldAndValidState([...allFields.current]);
-
-    if (errorsRef.current[name]) {
-      swapArrayAt(errorsRef.current[name], indexA, indexB);
-    }
-
-    if (readFormStateRef.current.touched && touchedFieldsRef.current[name]) {
-      swapArrayAt(touchedFieldsRef.current[name], indexA, indexB);
-      reRender();
-    }
+    const updatedFieldArrayValuesWithKey = mapCurrentIds(
+      control._getFieldArray(name),
+      _fieldIds,
+      keyName,
+    );
+    swapArrayAt(updatedFieldArrayValuesWithKey, indexA, indexB);
+    control._updateFieldArray(
+      name,
+      swapArrayAt,
+      {
+        argA: indexA,
+        argB: indexB,
+      },
+      updateValues(updatedFieldArrayValuesWithKey),
+      false,
+    );
   };
 
   const move = (from: number, to: number) => {
-    mapCurrentFieldsValueWithState();
-    const fieldValues = getFieldValueByName(fieldsRef.current, name);
-    moveArrayAt(fieldValues, from, to);
-    resetFields(fieldValues);
-    moveArrayAt(allFields.current, from, to);
-    setFieldAndValidState([...allFields.current]);
-
-    if (errorsRef.current[name]) {
-      moveArrayAt(errorsRef.current[name], from, to);
-    }
-
-    if (readFormStateRef.current.touched && touchedFieldsRef.current[name]) {
-      moveArrayAt(touchedFieldsRef.current[name], from, to);
-      reRender();
-    }
+    const updatedFieldArrayValuesWithKey = mapCurrentIds(
+      control._getFieldArray(name),
+      _fieldIds,
+      keyName,
+    );
+    moveArrayAt(updatedFieldArrayValuesWithKey, from, to);
+    control._updateFieldArray(
+      name,
+      moveArrayAt,
+      {
+        argA: from,
+        argB: to,
+      },
+      updateValues(updatedFieldArrayValuesWithKey),
+      false,
+    );
   };
 
-  const reset = () => {
-    resetFields();
-    memoizedDefaultValues.current = getDefaultValues();
-    setField(mapIds(memoizedDefaultValues.current, keyName));
+  const update = (
+    index: number,
+    value: Partial<FieldArray<TFieldValues, TFieldArrayName>>,
+  ) => {
+    const updatedFieldArrayValuesWithKey = mapCurrentIds(
+      control._getFieldArray(name),
+      _fieldIds,
+      keyName,
+    );
+    const updatedFieldArrayValues = updateAt(
+      updatedFieldArrayValuesWithKey,
+      index,
+      value,
+    );
+    _fieldIds.current = mapIds(updatedFieldArrayValues, keyName);
+    control._updateFieldArray(
+      name,
+      updateAt,
+      {
+        argA: index,
+        argB: value,
+      },
+      updateValues(_fieldIds.current),
+      true,
+      false,
+    );
+  };
+
+  const replace = (
+    value:
+      | Partial<FieldArray<TFieldValues, TFieldArrayName>>
+      | Partial<FieldArray<TFieldValues, TFieldArrayName>>[],
+  ) => {
+    const updatedFieldArrayValuesWithKey: Partial<
+      FieldArrayWithId<TFieldValues, TFieldArrayName, TKeyName>
+    >[] = mapIds(convertToArrayPayload(value), keyName);
+    control._updateFieldArray(
+      name,
+      () => updatedFieldArrayValuesWithKey,
+      {},
+      updateValues(updatedFieldArrayValuesWithKey),
+      true,
+      false,
+    );
   };
 
   React.useEffect(() => {
-    if (
-      isNameKey &&
-      isDeleted &&
-      fieldArrayDefaultValues.current[name] &&
-      fields.length < fieldArrayDefaultValues.current[name].length
-    ) {
-      fieldArrayDefaultValues.current[name].pop();
-    }
-  }, [fields, name, fieldArrayDefaultValues, isDeleted, isNameKey]);
+    control._stateFlags.action = false;
 
-  React.useEffect(() => {
-    if (isWatchAllRef && isWatchAllRef.current) {
-      reRender();
-    } else if (watchFieldsRef) {
-      for (const watchField of watchFieldsRef.current) {
-        if (watchField.startsWith(name)) {
-          reRender();
+    if (control._names.watchAll) {
+      control._subjects.state.next({});
+    } else {
+      for (const watchField of control._names.watch) {
+        if (name.startsWith(watchField)) {
+          control._subjects.state.next({});
           break;
         }
       }
     }
-  }, [fields, name, reRender, watchFieldsRef, isWatchAllRef]);
+
+    control._subjects.watch.next({
+      name,
+      values: control._formValues,
+    });
+
+    control._names.focus &&
+      focusFieldBy(control._fields, (key: string) =>
+        key.startsWith(control._names.focus),
+      );
+
+    control._names.focus = '';
+
+    control._proxyFormState.isValid && control._updateValid();
+  }, [fields, name, control, keyName]);
 
   React.useEffect(() => {
-    const resetFunctions = resetFieldArrayFunctionRef.current;
-    const fieldArrayNames = fieldArrayNamesRef.current;
-    fieldArrayNames.add(name);
-    resetFunctions[name] = reset;
+    !get(control._formValues, name) && set(control._formValues, name, []);
 
     return () => {
-      resetFields();
-      delete resetFunctions[name];
-      fieldArrayNames.delete(name);
+      if (control._options.shouldUnregister || shouldUnregister) {
+        control.unregister(name as FieldPath<TFieldValues>);
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [name, control, keyName, shouldUnregister]);
 
   return {
-    swap: React.useCallback(swap, [name]),
-    move: React.useCallback(move, [name]),
-    prepend: React.useCallback(prepend, [name]),
-    append: React.useCallback(append, [name]),
-    remove: React.useCallback(remove, [fields, name]),
-    insert: React.useCallback(insert, [name]),
-    fields,
+    swap: React.useCallback(swap, [updateValues, name, control, keyName]),
+    move: React.useCallback(move, [updateValues, name, control, keyName]),
+    prepend: React.useCallback(prepend, [updateValues, name, control, keyName]),
+    append: React.useCallback(append, [updateValues, name, control, keyName]),
+    remove: React.useCallback(remove, [updateValues, name, control, keyName]),
+    insert: React.useCallback(insert, [updateValues, name, control, keyName]),
+    update: React.useCallback(update, [updateValues, name, control, keyName]),
+    replace: React.useCallback(replace, [updateValues, name, control, keyName]),
+    fields: fields as FieldArrayWithId<
+      TFieldValues,
+      TFieldArrayName,
+      TKeyName
+    >[],
   };
 };

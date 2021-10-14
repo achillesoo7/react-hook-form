@@ -1,4 +1,4 @@
-context('form setValue with schema', () => {
+describe('form setValue with schema', () => {
   it('should set input value, trigger validation and clear all errors', () => {
     cy.visit('http://localhost:3000/setValueWithSchema');
 
@@ -22,6 +22,6 @@ context('form setValue with schema', () => {
     cy.get('input[name="requiredField"]').should('have.value', 'test123456789');
     cy.get('p').should('have.length', 0);
 
-    cy.get('#renderCount').contains('7');
+    cy.get('#renderCount').contains('34');
   });
 });

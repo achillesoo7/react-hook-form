@@ -1,4 +1,4 @@
-context('customSchemaValidation form validation', () => {
+describe('customSchemaValidation form validation', () => {
   it('should validate the form with onSubmit mode', () => {
     cy.visit('http://localhost:3000/customSchemaValidation/onSubmit');
     cy.get('button').click();
@@ -90,7 +90,7 @@ context('customSchemaValidation form validation', () => {
     cy.get('input[name="checkbox"]').check();
 
     cy.get('p').should('have.length', 0);
-    cy.get('#renderCount').contains('27');
+    cy.get('#renderCount').contains('20');
   });
 
   it('should validate the form with onChange mode', () => {
@@ -132,6 +132,6 @@ context('customSchemaValidation form validation', () => {
     cy.get('input[name="checkbox"]').check();
 
     cy.get('p').should('have.length', 0);
-    cy.get('#renderCount').contains('29');
+    cy.get('#renderCount').contains('22');
   });
 });

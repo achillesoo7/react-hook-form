@@ -1,7 +1,6 @@
-context('manual register form validation', () => {
+describe('manual register form validation', () => {
   it('should validate the form', () => {
     cy.visit('http://localhost:3000/manual-register-form');
-    cy.wait(200);
     cy.get('#submit').click();
 
     cy.get('input[name="firstName"] + p').contains('firstName error');
@@ -42,6 +41,6 @@ context('manual register form validation', () => {
     cy.get('input[name="checkbox"]').check();
 
     cy.get('p').should('have.length', 0);
-    cy.get('#renderCount').contains('25');
+    cy.get('#renderCount').contains('45');
   });
 });

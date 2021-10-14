@@ -1,7 +1,7 @@
-import { isValidElement } from 'react';
-import isString from '../utils/isString';
-import isObject from '../utils/isObject';
+import * as React from 'react';
+
 import { Message } from '../types';
+import isString from '../utils/isString';
 
 export default (value: unknown): value is Message =>
-  isString(value) || (isObject(value) && isValidElement(value));
+  isString(value) || React.isValidElement(value as JSX.Element);

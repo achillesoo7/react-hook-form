@@ -1,4 +1,4 @@
-context('basicSchemaValidation form validation', () => {
+describe('basicSchemaValidation form validation', () => {
   it('should validate the form with onSubmit mode', () => {
     cy.visit('http://localhost:3000/basic-schema-validation/onSubmit');
     cy.get('button').click();
@@ -92,7 +92,7 @@ context('basicSchemaValidation form validation', () => {
     cy.get('input[name="checkbox"]').check();
 
     cy.get('p').should('have.length', 0);
-    cy.get('#renderCount').contains('28');
+    cy.get('#renderCount').contains('22');
   });
 
   it('should validate the form with onChange mode', () => {
@@ -135,6 +135,6 @@ context('basicSchemaValidation form validation', () => {
     cy.get('input[name="checkbox"]').check();
 
     cy.get('p').should('have.length', 0);
-    cy.get('#renderCount').contains('31');
+    cy.get('#renderCount').contains('26');
   });
 });

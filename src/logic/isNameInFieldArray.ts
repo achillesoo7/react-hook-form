@@ -1,10 +1,6 @@
-export const isMatchFieldArrayName = (name: string, searchName: string) =>
-  RegExp(
-    `^${searchName}[\\d+]`.replace(/\[/g, '\\[').replace(/\]/g, '\\]'),
-  ).test(name);
+import { InternalFieldName } from '../types';
 
-export default (names: Set<string>, name: string) =>
-  [...names].reduce(
-    (prev, current) => (isMatchFieldArrayName(name, current) ? true : prev),
-    false,
-  );
+import getNodeParentName from './getNodeParentName';
+
+export default (names: Set<InternalFieldName>, name: InternalFieldName) =>
+  [...names].some((current) => getNodeParentName(name) === current);

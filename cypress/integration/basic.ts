@@ -1,6 +1,4 @@
-/// <reference types="cypress" />
-
-context('basic form validation', () => {
+describe('basic form validation', () => {
   it('should validate the form and reset the form', () => {
     cy.visit('http://localhost:3000/basic/onSubmit');
     cy.get('button#submit').click();
@@ -9,7 +7,7 @@ context('basic form validation', () => {
 
     cy.get('input[name="firstName"] + p').contains('firstName error');
     cy.get('input[name="nestItem.nest1"] + p').contains('nest 1 error');
-    cy.get('input[name="arrayItem[0].test1"] + p').contains(
+    cy.get('input[name="arrayItem.0.test1"] + p').contains(
       'array item 1 error',
     );
     cy.get('input[name="lastName"] + p').contains('lastName error');
@@ -25,7 +23,7 @@ context('basic form validation', () => {
 
     cy.get('input[name="firstName"]').type('bill');
     cy.get('input[name="firstName"]').type('a');
-    cy.get('input[name="arrayItem[0].test1"]').type('ab');
+    cy.get('input[name="arrayItem.0.test1"]').type('ab');
     cy.get('input[name="nestItem.nest1"]').type('ab');
     cy.get('input[name="lastName"]').type('luo123456');
     cy.get('input[name="lastName"] + p').contains('lastName error');
@@ -57,8 +55,34 @@ context('basic form validation', () => {
     cy.get('input[name="maxDate"]').type('2019-08-01');
     cy.get('input[name="checkbox"]').check();
     cy.get('input[name="checkboxArray"]').check('3');
+    cy.get('select[name="multiple"]').select(['optionA', 'optionB']);
 
     cy.get('p').should('have.length', 0);
+
+    cy.get('#submit').click();
+
+    cy.get('pre').should(($state) =>
+      expect(JSON.parse($state.text())).to.be.deep.equal({
+        nestItem: { nest1: 'ab' },
+        arrayItem: [{ test1: 'ab' }],
+        firstName: 'billa',
+        lastName: 'luo',
+        min: '11',
+        max: '19',
+        minDate: '2019-08-01',
+        maxDate: '2019-08-01',
+        minLength: 'bbi',
+        minRequiredLength: 'bi',
+        selectNumber: '1',
+        pattern: 'luo23',
+        radio: '1',
+        checkbox: true,
+        checkboxArray: ['3'],
+        multiple: ['optionA', 'optionB'],
+        validate: 'test',
+      }),
+    );
+    cy.get('#submit').click();
 
     cy.get('#resetForm').click();
     cy.get('input[name="firstName"]').should('not.have.value');
@@ -73,7 +97,48 @@ context('basic form validation', () => {
     cy.get('input[name="pattern"]').should('not.have.value');
     cy.get('input[name="minDate"]').should('not.have.value');
     cy.get('input[name="maxDate"]').should('not.have.value');
-    cy.get('#renderCount').contains('33');
+    cy.get('#renderCount').contains('39');
+
+    cy.get('#on-invalid-called-times').contains('1');
+  });
+
+  it('should validate the form with onTouched mode', () => {
+    cy.visit('http://localhost:3000/basic/onTouched');
+    cy.get('input[name="nestItem.nest1"]').focus();
+    cy.get('input[name="nestItem.nest1"]').type('test');
+    cy.get('input[name="nestItem.nest1"]').clear();
+    cy.get('p').should('have.length', 0);
+    cy.get('input[name="nestItem.nest1"]').blur();
+    cy.get('input[name="nestItem.nest1"] + p').contains('nest 1 error');
+
+    cy.get('input[name="arrayItem.0.test1"]').focus();
+    cy.get('input[name="arrayItem.0.test1"]').blur();
+    cy.get('input[name="arrayItem.0.test1"] + p').contains(
+      'array item 1 error',
+    );
+
+    cy.get('select[name="selectNumber"]').focus();
+    cy.get('select[name="selectNumber"]').blur();
+    cy.get('select[name="selectNumber"] + p').contains('selectNumber error');
+    cy.get('select[name="selectNumber"]').select('1');
+
+    cy.get('input[name="radio"]').first().focus();
+    cy.get('input[name="radio"]').first().blur();
+    cy.get('input[name="radio"] + p').contains('radio error');
+    cy.get('input[name="radio"]').check('1');
+
+    cy.get('input[name="checkbox"]').focus();
+    cy.get('input[name="checkbox"]').blur();
+    cy.get('input[name="checkbox"] + p').contains('checkbox error');
+    cy.get('input[name="checkbox"]').check();
+    cy.get('input[name="checkbox"]').blur();
+
+    cy.get('input[name="nestItem.nest1"]').type('test');
+    cy.get('input[name="arrayItem.0.test1"]').type('test');
+
+    cy.get('p').should('have.length', 0);
+
+    cy.get('#renderCount').contains('11');
   });
 
   it('should validate the form with onBlur mode and reset the form', () => {
@@ -84,12 +149,12 @@ context('basic form validation', () => {
     cy.get('input[name="nestItem.nest1"] + p').contains('nest 1 error');
     cy.get('input[name="nestItem.nest1"]').type('a');
 
-    cy.get('input[name="arrayItem[0].test1"]').focus();
-    cy.get('input[name="arrayItem[0].test1"]').blur();
-    cy.get('input[name="arrayItem[0].test1"] + p').contains(
+    cy.get('input[name="arrayItem.0.test1"]').focus();
+    cy.get('input[name="arrayItem.0.test1"]').blur();
+    cy.get('input[name="arrayItem.0.test1"] + p').contains(
       'array item 1 error',
     );
-    cy.get('input[name="arrayItem[0].test1"]').type('a');
+    cy.get('input[name="arrayItem.0.test1"]').type('a');
 
     cy.get('input[name="firstName"]').focus();
     cy.get('input[name="firstName"]').blur();
@@ -135,6 +200,7 @@ context('basic form validation', () => {
     cy.get('input[name="checkbox"]').blur();
     cy.get('input[name="checkbox"] + p').contains('checkbox error');
     cy.get('input[name="checkbox"]').check();
+    cy.get('input[name="checkbox"]').blur();
 
     cy.get('p').should('have.length', 0);
 
@@ -151,7 +217,7 @@ context('basic form validation', () => {
     cy.get('input[name="pattern"]').should('not.have.value');
     cy.get('input[name="minDate"]').should('not.have.value');
     cy.get('input[name="maxDate"]').should('not.have.value');
-    cy.get('#renderCount').contains('32');
+    cy.get('#renderCount').contains('28');
   });
 
   it('should validate the form with onChange mode and reset the form', () => {
@@ -202,6 +268,6 @@ context('basic form validation', () => {
     cy.get('input[name="pattern"]').should('not.have.value');
     cy.get('input[name="minDate"]').should('not.have.value');
     cy.get('input[name="maxDate"]').should('not.have.value');
-    cy.get('#renderCount').contains('30');
+    cy.get('#renderCount').contains('21');
   });
 });
